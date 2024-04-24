@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mule xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:apikit="http://www.mulesoft.org/schema/mule/mule-apikit" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd http://www.mulesoft.org/schema/mule/mule-apikit http://www.mulesoft.org/schema/mule/mule-apikit/current/mule-apikit.xsd http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd ">
+    
+    <flow name="get:\customers\(id):wurth-e-shopify-config">
+		<ee:transform doc:name="varInitialData" doc:id="167208fe-2017-47fc-9687-bdd26a4ca139" >
+			<ee:message />
+			<ee:variables >
+				<ee:set-variable variableName="varInitialData" ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	correlationId: attributes.headers.'x-correlation-id',
+	customerId: attributes.uriParams.id,
+	origin: attributes.headers.'x-source-system'
+}]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<logger level="INFO" doc:name="START get customers by id" doc:id="4ba4918c-69a1-40ae-b022-aa9f9f87ca15" message='#[%dw 2.0&#10;output application/json&#10;---&#10;{&#10;	&#10;	message: "starting get customers by id to salesforce",&#10;	content: vars.varInitialData&#10;}]' />
+		<http:request method="GET" doc:name="Request" doc:id="bfcd95ab-826e-4be4-8162-4b2a5592757e" config-ref="HTTP_Request_configuration_customers-p" path="/customers"/>
+		<error-handler >
+			<on-error-propagate enableNotifications="true" logException="true" doc:name="On Error Propagate" doc:id="ec0e783a-5a1f-4c5a-b22a-4a5af3964957" >
+				<logger level="ERROR" doc:name="error trying to post customer into salesforce" doc:id="b06c6c35-6d8c-415f-a115-82bc00ae4ef4" message="#[%dw 2.0&#10;output application/json&#10;---&#10;{&#10;	content: vars.varInitialData,&#10;	error: error&#10;}]" />
+			</on-error-propagate>
+		</error-handler>
+    </flow>
+
+    <flow name="post:\customers:application\json:wurth-e-shopify-config">
+		<ee:transform doc:name="varInitialData" doc:id="36001e66-156b-499e-8978-309f50d7f958" >
+			<ee:message />
+			<ee:variables >
+				<ee:set-variable variableName="varInitialData" ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	correlationId: attributes.headers.'x-correlation-id',
+	origin: attributes.headers.'x-source-system',
+	idempotencykey: attributes.headers."x-idempotency-key",
+	content: payload
+}]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<logger level="INFO" doc:name="START post customers" doc:id="fd5f1d69-e47a-401d-b791-70084feeef78" message='#[%dw 2.0&#10;output application/json&#10;---&#10;{&#10;	&#10;	message: "starting post customers",&#10;	content: vars.varInitialData&#10;}]' />
+		<http:request method="POST" doc:name="Request" doc:id="3143fd61-d227-4a68-81a7-473434421a58" config-ref="HTTP_Request_configuration_customers-p" path="/customers" sendCorrelationId="ALWAYS" correlationId="#[vars.correlationId]">
+			<http:headers ><![CDATA[#[output application/json
+---
+{
+	"x-idempotency-key" : vars.idempotencykey
+}]]]></http:headers>
+		</http:request>
+		<error-handler >
+			<on-error-propagate enableNotifications="true" logException="true" doc:name="On Error Propagate" doc:id="bb294e8a-df7a-465e-9e2e-f15999797a89" >
+				<logger level="ERROR" doc:name="error trying to post customer into salesforce" doc:id="1bc09c12-bfae-4c54-8ac8-c0f9708c3f5c" message="#[%dw 2.0&#10;output application/json&#10;---&#10;{&#10;	content: vars.varInitialData,&#10;	error: error&#10;}]" />
+			</on-error-propagate>
+		</error-handler>
+    </flow>
+
+</mule>
